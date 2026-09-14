@@ -1,0 +1,2 @@
+# Test override: test-only services and settings go here, layered on docker-compose.yml.
+services: {}

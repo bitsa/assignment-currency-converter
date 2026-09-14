@@ -12,7 +12,8 @@
     "format:check": "prettier --check . --ignore-path ../.gitignore --ignore-path ../.prettierignore",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest",
-    "test:integration": "jest --config jest.integration.config.json --runInBand"
+    "test:integration": "jest --config jest.integration.config.json --runInBand",
+    "test:integration:ci": "jest --config jest.integration.config.json --runInBand --testPathIgnorePatterns /node_modules/ /dist/ stack-lifecycle"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.3",
