@@ -92,9 +92,11 @@ docker compose down
 npm run test:integration -w backend -- stack-lifecycle
 ```
 
-Continuous integration runs three checks on every pull request to `main` and on every commit to `main`:
+Continuous integration runs these checks on every pull request to `main` and on every commit to `main`:
 
-- `backend-ci` — `npm ci`, ESLint, Prettier check, TypeScript check and unit tests with a coverage report.
+- `backend-ci`, as two parallel jobs:
+  - `lint-format-typecheck` — `npm ci`, ESLint, Prettier check and TypeScript check.
+  - `unit-tests` — `npm ci` and the backend unit tests with a coverage report.
 - `integration-ci` — builds and starts the Compose stack with `docker-compose.test.yml`, waits for `/health` to answer `200`, runs `npm run test:integration:ci -w backend`, and prints the service logs on failure.
 - `docs-ci` — markdownlint over every tracked markdown file.
 
