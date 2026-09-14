@@ -1,0 +1,13 @@
+{
+  "rootDir": ".",
+  "roots": ["<rootDir>"],
+  "testRegex": "/test/integration/.*\\.(e2e-|int-)?(spec|test)\\.ts$",
+  "testPathIgnorePatterns": ["/node_modules/", "/dist/"],
+  "testEnvironment": "node",
+  "moduleFileExtensions": ["ts", "js", "json"],
+  "transform": {
+    "^.+\\.ts$": ["ts-jest", { "tsconfig": "<rootDir>/tsconfig.json" }]
+  },
+  "maxWorkers": 1,
+  "testTimeout": 120000
+}

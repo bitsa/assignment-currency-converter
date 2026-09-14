@@ -1,0 +1,11 @@
+# Allowlist: only what the backend image needs.
+*
+!package.json
+!package-lock.json
+!tsconfig.base.json
+!backend
+
+backend/node_modules
+backend/dist
+backend/coverage
+**/*.tsbuildinfo
