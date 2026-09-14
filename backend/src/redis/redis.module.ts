@@ -1,4 +1,4 @@
-import { Global, Logger, Module } from '@nestjs/common';
+import { Global, Inject, Logger, Module, type OnModuleDestroy } from '@nestjs/common';
 import type { Redis } from 'ioredis';
 import { AppConfigService } from '../config/app-config.service';
 import { createRedisClient } from './redis-client.factory';
@@ -17,4 +17,11 @@ import { REDIS_CLIENT } from './redis.tokens';
   ],
   exports: [REDIS_CLIENT],
 })
-export class RedisModule {}
+export class RedisModule implements OnModuleDestroy {
+  constructor(@Inject(REDIS_CLIENT) private readonly redis: Pick<Redis, 'disconnect'>) {}
+
+  /** Stops ioredis' reconnect timers so a closed app leaves no socket or timer behind. */
+  onModuleDestroy(): void {
+    this.redis.disconnect();
+  }
+}

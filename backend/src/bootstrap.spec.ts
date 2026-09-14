@@ -31,7 +31,10 @@ async function freePort(): Promise<number> {
 }
 
 function fakeStderr(): { readonly write: jest.Mock; output(): string } {
-  const write = jest.fn().mockReturnValue(true);
+  const write = jest.fn((_chunk: unknown, callback?: () => void) => {
+    callback?.();
+    return true;
+  });
   return {
     write,
     output: () => write.mock.calls.map((call: readonly unknown[]) => String(call[0])).join(''),

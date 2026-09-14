@@ -20,6 +20,7 @@ export interface LogLine {
 
 export interface FakeRedis {
   readonly ping: jest.Mock<Promise<string>, []>;
+  readonly disconnect: jest.Mock<void, []>;
 }
 
 export interface TestAppOptions {
@@ -48,7 +49,10 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<TestA
       callback();
     },
   });
-  const redis: FakeRedis = { ping: jest.fn<Promise<string>, []>().mockResolvedValue('PONG') };
+  const redis: FakeRedis = {
+    ping: jest.fn<Promise<string>, []>().mockResolvedValue('PONG'),
+    disconnect: jest.fn<void, []>(),
+  };
   const rootLogger = pino(
     buildRootLoggerOptions({ nodeEnv: 'test', logLevel: options.logLevel ?? 'info' }),
     sink,

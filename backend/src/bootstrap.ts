@@ -38,6 +38,5 @@ export function reportBootstrapFailure(
   exit: (code: number) => void = (code) => process.exit(code),
 ): void {
   const message = error instanceof Error ? error.message : String(error);
-  stderr.write(`Bootstrap failed: ${message}\n`);
-  exit(1);
+  stderr.write(`Bootstrap failed: ${message}\n`, () => exit(1));
 }
