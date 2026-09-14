@@ -1,0 +1,17 @@
+# --- node ---
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+
+# --- env ---
+.env
+.env.*
+!.env.example
+
+# --- editors / os ---
+.vscode/
+.idea/
+.claude/
+.DS_Store
