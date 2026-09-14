@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Currency converter HTTP API",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
     "start": "node dist/main.js",
