@@ -14,7 +14,8 @@ import {
 } from './helpers/stack';
 import { pollUntil } from './helpers/wait';
 
-// Precondition: the main stack is down. Cases run in order and share one clean copy.
+// Precondition: the main stack is down (host ports 3000 and 6390 free). Every Compose step
+// runs inside one ordered test on a clean copy and cleans up after itself.
 const PROJECT = 'qa-lifecycle';
 
 async function findLockfiles(root: string, relative = ''): Promise<string[]> {
@@ -66,71 +67,63 @@ describe('stack lifecycle from a clean clone', () => {
     expect(result).toMatchObject({ code: 0 });
   }, 320_000);
 
-  it('reports app and redis healthy within 60 seconds of starting a clean clone without .env', async () => {
-    expect(await compose(['build'], inCopy({ timeoutMs: 900_000 }))).toMatchObject({ code: 0 });
-
-    const startedAt = Date.now();
-    expect(await compose(['up', '-d'], inCopy())).toMatchObject({ code: 0 });
-
-    await expectHealthy(['app', 'redis'], 60_000 - (Date.now() - startedAt), inCopy());
-  }, 1_000_000);
-
-  it('publishes the API on host port 3000 and Redis on host port 6390 by default', async () => {
-    const port = await compose(['port', 'redis', '6379'], inCopy());
-
-    expect(port.stdout.trim()).toMatch(/:6390$/);
-    expect(await redisPing(6390)).toBe('+PONG');
-    expect((await get('http://localhost:3000', '/health')).status).toBe(200);
-  }, 60_000);
-
-  it('make down removes the containers and the network', async () => {
-    expect(await run('make', ['down'], inCopy({ timeoutMs: 120_000 }))).toMatchObject({ code: 0 });
-
-    expect((await compose(['ps', '-a', '-q'], inCopy())).stdout.trim()).toBe('');
-    const networks = await run('docker', ['network', 'ls', '-q', '--filter', `name=${PROJECT}_`]);
-    expect(networks.stdout.trim()).toBe('');
-  }, 150_000);
-
-  it('make up-d starts a stack that becomes healthy within 60 seconds', async () => {
+  // Each step starts from the state the previous one leaves, so they form a single test.
+  it('starts, stops and reconfigures the stack from a clean clone', async () => {
+    const envFile = path.join(copy, '.env');
     try {
+      // Reports app and redis healthy within 60 seconds of starting a clean clone without .env.
+      expect(await compose(['build'], inCopy({ timeoutMs: 900_000 }))).toMatchObject({ code: 0 });
+      const startedAt = Date.now();
+      expect(await compose(['up', '-d'], inCopy())).toMatchObject({ code: 0 });
+      await expectHealthy(['app', 'redis'], 60_000 - (Date.now() - startedAt), inCopy());
+
+      // Publishes the API on host port 3000 and Redis on host port 6390 by default.
+      const port = await compose(['port', 'redis', '6379'], inCopy());
+      expect(port.stdout.trim()).toMatch(/:6390$/);
+      expect(await redisPing(6390)).toBe('+PONG');
+      expect((await get('http://localhost:3000', '/health')).status).toBe(200);
+
+      // make down removes the containers and the network.
+      expect(await run('make', ['down'], inCopy({ timeoutMs: 120_000 }))).toMatchObject({
+        code: 0,
+      });
+      expect((await compose(['ps', '-a', '-q'], inCopy())).stdout.trim()).toBe('');
+      const networks = await run('docker', ['network', 'ls', '-q', '--filter', `name=${PROJECT}_`]);
+      expect(networks.stdout.trim()).toBe('');
+
+      // make up-d starts a stack that becomes healthy within 60 seconds.
       expect(await run('make', ['up-d'], inCopy({ timeoutMs: 600_000 }))).toMatchObject({
         code: 0,
       });
       await expectHealthy(['app', 'redis'], 60_000, inCopy());
-    } finally {
       await run('make', ['down'], inCopy({ timeoutMs: 120_000 }));
-    }
-  }, 800_000);
 
-  it('make up serves /health in the foreground and exits after an interrupt', async () => {
-    const proc = spawnLong('make', ['up'], inCopy());
-    try {
-      const answered = await pollUntil(async () => {
-        if (!proc.isRunning()) {
-          return false;
+      // make up serves /health in the foreground and exits after an interrupt.
+      const proc = spawnLong('make', ['up'], inCopy());
+      try {
+        const answered = await pollUntil(async () => {
+          if (!proc.isRunning()) {
+            return false;
+          }
+          return (await tryGet('http://localhost:3000', '/health', 5000))?.status === 200
+            ? true
+            : undefined;
+        }, 120_000);
+        if (answered !== true || !proc.isRunning()) {
+          throw new Error(`make up: no 200 while running\n${proc.output().slice(-4000)}`);
         }
-        return (await tryGet('http://localhost:3000', '/health', 5000))?.status === 200
-          ? true
-          : undefined;
-      }, 120_000);
-      if (answered !== true || !proc.isRunning()) {
-        throw new Error(`make up: no 200 while running\n${proc.output().slice(-4000)}`);
+
+        proc.signal('SIGINT');
+        const exited = await pollUntil(() => (proc.isRunning() ? undefined : true), 30_000, 250);
+
+        expect(exited).toBe(true);
+      } finally {
+        proc.signal('SIGKILL');
       }
-
-      proc.signal('SIGINT');
-      const exited = await pollUntil(() => (proc.isRunning() ? undefined : true), 30_000, 250);
-
-      expect(exited).toBe(true);
-    } finally {
-      proc.signal('SIGKILL');
       await run('make', ['down'], inCopy({ timeoutMs: 120_000 }));
-    }
-  }, 300_000);
 
-  it('applies APP_HOST_PORT, REDIS_HOST_PORT and LOG_LEVEL from a root .env file', async () => {
-    const envFile = path.join(copy, '.env');
-    await writeFile(envFile, 'APP_HOST_PORT=3100\nREDIS_HOST_PORT=6391\nLOG_LEVEL=warn\n');
-    try {
+      // Applies APP_HOST_PORT, REDIS_HOST_PORT and LOG_LEVEL from a root .env file.
+      await writeFile(envFile, 'APP_HOST_PORT=3100\nREDIS_HOST_PORT=6391\nLOG_LEVEL=warn\n');
       expect(await compose(['up', '-d'], inCopy({ timeoutMs: 600_000 }))).toMatchObject({
         code: 0,
       });
@@ -154,10 +147,10 @@ describe('stack lifecycle from a clean clone', () => {
         lines.filter((line) => ['info', 'debug', 'trace'].includes(levelOf(line) ?? '')),
       ).toEqual([]);
     } finally {
-      await compose(['down'], inCopy({ timeoutMs: 120_000 }));
+      await compose(['down', '--remove-orphans'], inCopy({ timeoutMs: 120_000 }));
       await rm(envFile, { force: true });
     }
-  }, 900_000);
+  }, 3_000_000);
 
   it('npm ci installs every workspace from the single root lockfile', async () => {
     expect(await run('npm', ['ci'], { cwd: copy, timeoutMs: 600_000 })).toMatchObject({ code: 0 });

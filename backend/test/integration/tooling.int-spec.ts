@@ -2,9 +2,9 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { nonEmptyLines, stripAnsi } from './helpers/logs';
 import { REPO_ROOT, run, spawnLong } from './helpers/run';
+import { compose, expectHealthy } from './helpers/stack';
 import { pollUntil } from './helpers/wait';
 
-// Precondition: the main stack is up and healthy.
 const REQUIRED_TARGETS = [
   'up',
   'up-d',
@@ -30,41 +30,68 @@ describe('repository tooling', () => {
     420_000,
   );
 
-  it('make ps, health, test and lint perform their actions', async () => {
-    const ps = await run('make', ['ps']);
-    expect(ps.code).toBe(0);
-    expect(ps.stdout).toContain('app');
-    expect(ps.stdout).toContain('redis');
-    expect(ps.stdout).toContain('healthy');
+  describe('against a running stack', () => {
+    let startedHere = false;
 
-    const health = await run('make', ['health']);
-    expect(health.code).toBe(0);
-    expect(health.stdout).toMatch(/"status"\s*:\s*"ok"/);
+    // Starts the main stack only when none is running, and removes only a stack it started, so
+    // an existing stack (possibly with extra Compose files) is left as it was.
+    beforeAll(async () => {
+      startedHere = (await compose(['ps', '-q'])).stdout.trim() === '';
+      if (startedHere) {
+        const up = await compose(['up', '-d', '--wait', '--wait-timeout', '120'], {
+          timeoutMs: 900_000,
+        });
+        if (up.code !== 0) {
+          throw new Error(`docker compose up failed\n${up.stdout}${up.stderr}`);
+        }
+      }
+      await expectHealthy(['app', 'redis'], 60_000);
+    }, 1_000_000);
 
-    expect(await run('make', ['test'], { timeoutMs: 300_000 })).toMatchObject({ code: 0 });
-    expect(await run('make', ['lint'], { timeoutMs: 300_000 })).toMatchObject({ code: 0 });
-  }, 650_000);
+    afterAll(async () => {
+      if (startedHere) {
+        await compose(['down', '--remove-orphans'], { timeoutMs: 120_000 });
+      }
+    }, 150_000);
 
-  it('make logs follows the logs of both services', async () => {
-    const proc = spawnLong('make', ['logs']);
-    try {
-      const seen = await pollUntil(
-        () => {
-          const out = stripAnsi(proc.output());
-          return /^\S*app\S*\s+\|/m.test(out) && /^\S*redis\S*\s+\|/m.test(out) ? true : undefined;
-        },
-        15_000,
-        250,
-      );
+    it('make ps, health, test and lint perform their actions', async () => {
+      const ps = await run('make', ['ps']);
+      expect(ps.code).toBe(0);
+      expect(ps.stdout).toContain('app');
+      expect(ps.stdout).toContain('redis');
+      expect(ps.stdout).toContain('healthy');
 
-      expect(seen).toBe(true);
-      expect(proc.isRunning()).toBe(true);
-    } finally {
-      proc.signal('SIGTERM');
-      await pollUntil(() => (proc.isRunning() ? undefined : true), 10_000, 250);
-      proc.signal('SIGKILL');
-    }
-  }, 60_000);
+      const health = await run('make', ['health']);
+      expect(health.code).toBe(0);
+      expect(health.stdout).toMatch(/"status"\s*:\s*"ok"/);
+
+      expect(await run('make', ['test'], { timeoutMs: 300_000 })).toMatchObject({ code: 0 });
+      expect(await run('make', ['lint'], { timeoutMs: 300_000 })).toMatchObject({ code: 0 });
+    }, 650_000);
+
+    it('make logs follows the logs of both services', async () => {
+      const proc = spawnLong('make', ['logs']);
+      try {
+        const seen = await pollUntil(
+          () => {
+            const out = stripAnsi(proc.output());
+            return /^\S*app\S*\s+\|/m.test(out) && /^\S*redis\S*\s+\|/m.test(out)
+              ? true
+              : undefined;
+          },
+          15_000,
+          250,
+        );
+
+        expect(seen).toBe(true);
+        expect(proc.isRunning()).toBe(true);
+      } finally {
+        proc.signal('SIGTERM');
+        await pollUntil(() => (proc.isRunning() ? undefined : true), 10_000, 250);
+        proc.signal('SIGKILL');
+      }
+    }, 60_000);
+  });
 
   it('make help lists every Makefile target with a description', async () => {
     const result = await run('make', ['help']);

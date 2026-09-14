@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import path from 'node:path';
 
 export const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
@@ -37,6 +37,32 @@ export function childEnv(extra: Readonly<Record<string, string>> = {}): NodeJS.P
   return { ...env, ...extra };
 }
 
+const IS_WINDOWS = process.platform === 'win32';
+
+/**
+ * Kills `child` and every process it started. Wrappers such as `npm`, `make` or `docker
+ * compose` leave descendants that would otherwise keep the output pipes open.
+ */
+function killTree(child: ChildProcess): void {
+  if (child.pid === undefined) {
+    return;
+  }
+  if (IS_WINDOWS) {
+    spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' }).on(
+      'error',
+      () => child.kill('SIGKILL'),
+    );
+    return;
+  }
+  try {
+    // Negative pid: the whole process group the child leads.
+    process.kill(-child.pid, 'SIGKILL');
+  } catch {
+    // The group has already exited, or was never created.
+    child.kill('SIGKILL');
+  }
+}
+
 export function run(
   cmd: string,
   args: readonly string[],
@@ -47,6 +73,8 @@ export function run(
       cwd: options.cwd ?? REPO_ROOT,
       env: childEnv(options.env),
       stdio: ['ignore', 'pipe', 'pipe'],
+      // Own process group on POSIX, so a timeout can kill the whole tree.
+      detached: !IS_WINDOWS,
     });
     let stdout = '';
     let stderr = '';
@@ -59,7 +87,7 @@ export function run(
     const timer =
       options.timeoutMs === undefined
         ? undefined
-        : setTimeout(() => child.kill('SIGKILL'), options.timeoutMs);
+        : setTimeout(() => killTree(child), options.timeoutMs);
     child.on('error', (error) => {
       clearTimeout(timer);
       reject(error);

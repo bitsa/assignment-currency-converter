@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { tryGet } from './http';
-import { run } from './run';
+import { run, type RunOptions } from './run';
 import { containerInfo } from './stack';
 import { pollUntil } from './wait';
 
@@ -153,8 +153,8 @@ export async function runApp(options: RunAppOptions = {}): Promise<AppContainer>
     url = hostPort ? `http://127.0.0.1:${hostPort}` : undefined;
   }
 
-  const logs = async (): Promise<AppLogs> => {
-    const result = await run('docker', ['logs', name]);
+  const logs = async (options: RunOptions = {}): Promise<AppLogs> => {
+    const result = await run('docker', ['logs', name], options);
     return { stdout: result.stdout, stderr: result.stderr };
   };
 
@@ -189,13 +189,14 @@ export async function runApp(options: RunAppOptions = {}): Promise<AppContainer>
         timeoutMs,
         500,
       ),
-    waitForLogs: async (predicate, timeoutMs) =>
-      (await pollUntil(
-        async () => (predicate(await logs()) ? true : undefined),
-        timeoutMs,
-        500,
-      )) === true,
-    logs,
+    waitForLogs: async (predicate, timeoutMs) => {
+      const deadline = Date.now() + timeoutMs;
+      // Each probe gets only the remaining budget, so a stalled `docker logs` cannot outlive it.
+      const probe = async (): Promise<true | undefined> =>
+        predicate(await logs({ timeoutMs: Math.max(deadline - Date.now(), 1) })) ? true : undefined;
+      return (await pollUntil(probe, timeoutMs, 500)) === true;
+    },
+    logs: () => logs(),
     exitCode: async () => (await state(name)).exitCode,
     restartCount: async () => (await state(name)).restarts,
     stop: async () => {
