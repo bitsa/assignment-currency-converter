@@ -48,6 +48,8 @@ Application variables, read by the service at startup. An unset variable takes i
 | `NODE_ENV` | `development` (Compose sets `production`) | `development`, `test`, `production` |
 | `LOG_LEVEL` | `info` | `fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent` |
 | `REDIS_URL` | `redis://redis:6379` | URL with scheme `redis://` or `rediss://` |
+| `MONOBANK_BASE_URL` | `https://api.monobank.ua` | URL with scheme `http://` or `https://`; a trailing slash is allowed |
+| `MONOBANK_TIMEOUT_MS` | `3000` | integer ≥ 100; time allowed for a complete upstream response |
 
 Compose variables, read by Docker Compose from an optional `.env` file at the repository root:
 
@@ -55,6 +57,7 @@ Compose variables, read by Docker Compose from an optional `.env` file at the re
 |---|---|---|
 | `APP_HOST_PORT` | `3000` | host port mapped to the `app` container |
 | `REDIS_HOST_PORT` | `6390` | host port mapped to Redis; non-standard so it does not clash with a local Redis |
+| `MONOBANK_MOCK_HOST_PORT` | `8081` | test override only: host port for the Monobank mock, bound to `127.0.0.1` |
 
 [`.env.example`](.env.example) lists every variable with the value the stack uses; copy it to `.env` to override.
 
@@ -84,6 +87,14 @@ npm ci
 | `npm run test:integration -w backend` | every integration spec, over HTTP against the Compose stack |
 | `npm run test:integration:ci -w backend` | every integration spec except the stack-lifecycle tests, against a stack that is already up (as CI runs them) |
 | `make docs-lint` | markdownlint over the repository's markdown files |
+
+The integration tests run against the stack started with the test override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build
+```
+
+The override adds `monobank-mock`, a mock of the Monobank API that serves fixture rates and can be switched into failure modes (server error, rate limited, timeout, malformed body, empty list) through a small admin API on `http://127.0.0.1:8081/__admin/*`. The `app` service is pointed at it, so neither the tests nor CI ever call the real Monobank API.
 
 The stack-lifecycle integration tests start and stop the stack themselves, so they run locally with the stack down:
 

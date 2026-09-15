@@ -1,2 +1,30 @@
 # Test override: test-only services and settings go here, layered on docker-compose.yml.
-services: {}
+services:
+  app:
+    environment:
+      MONOBANK_BASE_URL: http://monobank-mock:8081
+    depends_on:
+      monobank-mock:
+        condition: service_healthy
+
+  monobank-mock:
+    build:
+      context: .
+      dockerfile: tools/monobank-mock/Dockerfile
+    # Forwards signals to node so the container stops promptly.
+    init: true
+    ports:
+      - '127.0.0.1:${MONOBANK_MOCK_HOST_PORT:-8081}:8081'
+    # Probes the admin API, never /bank/currency, so the request counter stays at 0.
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:8081/__admin/state').then((r) => process.exit(r.status === 200 ? 0 : 1), () => process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+      start_period: 5s

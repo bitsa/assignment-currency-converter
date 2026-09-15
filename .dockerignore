@@ -1,11 +1,15 @@
-# Allowlist: only what the backend image needs.
+# Allowlist: only what the backend and mock images need.
 *
 !package.json
 !package-lock.json
 !tsconfig.base.json
 !backend
+!tools/monobank-mock
 
 backend/node_modules
 backend/dist
 backend/coverage
+tools/monobank-mock/node_modules
+tools/monobank-mock/dist
+tools/monobank-mock/coverage
 **/*.tsbuildinfo
