@@ -37,7 +37,7 @@ lint:  ## Run the linter
 DOCS_GLOBS := "**/*.md" "!**/node_modules/**" "!.claude/**"
 
 docs-lint:  ## markdownlint every markdown file
-	markdownlint-cli2 --config .markdownlint.json $(DOCS_GLOBS)
+	npm exec --no -- markdownlint-cli2 --config .markdownlint.json $(DOCS_GLOBS)
 
 docs-fix:  ## markdownlint --fix (auto-corrects fixable issues)
-	markdownlint-cli2 --fix --config .markdownlint.json $(DOCS_GLOBS)
+	npm exec --no -- markdownlint-cli2 --fix --config .markdownlint.json $(DOCS_GLOBS)
