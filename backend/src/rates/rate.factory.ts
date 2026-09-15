@@ -41,7 +41,12 @@ export function createRate(input: RateInput): Rate {
   if (Object.keys(values).length === 0) {
     throw new InvalidRateError(input);
   }
-  return Object.freeze({ base: input.base, quote: input.quote, ...values, asOf: input.asOf });
+  return Object.freeze({
+    base: input.base,
+    quote: input.quote,
+    ...values,
+    asOf: new Date(input.asOf.getTime()),
+  });
 }
 
 function isValidRateValue(value: DomainDecimalValue): boolean {

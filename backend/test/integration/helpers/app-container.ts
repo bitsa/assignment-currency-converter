@@ -6,7 +6,14 @@ import { pollUntil } from './wait';
 
 const PREFIX = 'qa-int-';
 const NONE_REDIS_NETWORK = 'qa-int-none-redis';
-const APP_VARIABLES = ['PORT', 'NODE_ENV', 'LOG_LEVEL', 'REDIS_URL'] as const;
+const APP_VARIABLES = [
+  'PORT',
+  'NODE_ENV',
+  'LOG_LEVEL',
+  'REDIS_URL',
+  'MONOBANK_BASE_URL',
+  'MONOBANK_TIMEOUT_MS',
+] as const;
 
 /** `stack`: the main stack's network (where `redis` resolves); `none-redis`: a bridge without Redis. */
 export type AppNetwork = 'stack' | 'none-redis' | `container:${string}`;
@@ -104,7 +111,7 @@ async function state(
 }
 
 /**
- * Starts a throw-away container from the image the main stack's `app` runs. The four
+ * Starts a throw-away container from the image the main stack's `app` runs. The
  * application variables are unset (so an image `ENV` cannot leak in) except those in `env`.
  */
 export async function runApp(options: RunAppOptions = {}): Promise<AppContainer> {

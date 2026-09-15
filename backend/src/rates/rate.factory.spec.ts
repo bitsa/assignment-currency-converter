@@ -17,7 +17,8 @@ describe('createRate', () => {
     expect('cross' in rate).toBe(false);
     expect(rate.base).toBe(USD);
     expect(rate.quote).toBe(UAH);
-    expect(rate.asOf).toBe(AS_OF);
+    expect(rate.asOf.getTime()).toBe(AS_OF.getTime());
+    expect(rate.asOf).not.toBe(AS_OF);
   });
 
   it('rejects a rate with the same base and quote, no value, or a non-positive value with InvalidRateError', () => {
