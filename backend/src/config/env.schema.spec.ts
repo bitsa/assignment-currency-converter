@@ -29,6 +29,8 @@ const ACCEPTED: readonly (readonly [string, string])[] = [
   ['MONOBANK_BASE_URL', 'https://user:secret@host'],
   ['MONOBANK_TIMEOUT_MS', '100'],
   ['MONOBANK_TIMEOUT_MS', '3000'],
+  ['RATES_CACHE_TTL_SECONDS', '1'],
+  ['RATES_CACHE_TTL_SECONDS', '300'],
 ];
 
 const REJECTED: readonly (readonly [string, string])[] = [
@@ -56,6 +58,11 @@ const REJECTED: readonly (readonly [string, string])[] = [
   ['MONOBANK_TIMEOUT_MS', '99'],
   ['MONOBANK_TIMEOUT_MS', '1500.5'],
   ['MONOBANK_TIMEOUT_MS', '-1'],
+  ['RATES_CACHE_TTL_SECONDS', '0'],
+  ['RATES_CACHE_TTL_SECONDS', '-1'],
+  ['RATES_CACHE_TTL_SECONDS', ''],
+  ['RATES_CACHE_TTL_SECONDS', '1.5'],
+  ['RATES_CACHE_TTL_SECONDS', 'abc'],
 ];
 
 const ALL_NAMES = [
@@ -65,10 +72,11 @@ const ALL_NAMES = [
   'REDIS_URL',
   'MONOBANK_BASE_URL',
   'MONOBANK_TIMEOUT_MS',
+  'RATES_CACHE_TTL_SECONDS',
 ] as const;
 
 describe('envSchema', () => {
-  it('applies the defaults 3000, development, info, redis://redis:6379, https://api.monobank.ua and 3000 when nothing is set', () => {
+  it('applies the defaults 3000, development, info, redis://redis:6379, https://api.monobank.ua, 3000 and 300 when nothing is set', () => {
     const { error, value } = validate({});
 
     expect(error).toBeUndefined();
@@ -79,6 +87,7 @@ describe('envSchema', () => {
       REDIS_URL: 'redis://redis:6379',
       MONOBANK_BASE_URL: 'https://api.monobank.ua',
       MONOBANK_TIMEOUT_MS: 3000,
+      RATES_CACHE_TTL_SECONDS: 300,
     });
   });
 
@@ -131,6 +140,7 @@ describe('envSchema', () => {
       REDIS_URL: 'http://redis:6379',
       MONOBANK_BASE_URL: 'ftp://api.monobank.ua',
       MONOBANK_TIMEOUT_MS: '99',
+      RATES_CACHE_TTL_SECONDS: '0',
     });
 
     expect(error?.details.map((detail) => detail.context?.key)).toEqual(ALL_NAMES);

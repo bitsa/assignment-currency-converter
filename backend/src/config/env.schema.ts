@@ -13,6 +13,7 @@ export interface Env {
   readonly REDIS_URL: string;
   readonly MONOBANK_BASE_URL: string;
   readonly MONOBANK_TIMEOUT_MS: number;
+  readonly RATES_CACHE_TTL_SECONDS: number;
 }
 
 // Unset → default; empty string → invalid (Joi rejects '' unless explicitly allowed).
@@ -32,6 +33,7 @@ export const envSchema = Joi.object<Env>({
     .uri({ scheme: ['http', 'https'] })
     .default('https://api.monobank.ua'),
   MONOBANK_TIMEOUT_MS: Joi.number().integer().min(100).default(3000),
+  RATES_CACHE_TTL_SECONDS: Joi.number().integer().min(1).default(300),
 });
 
 export const ENV_VALIDATION_OPTIONS: Joi.ValidationOptions = {

@@ -1,5 +1,8 @@
 import nock from 'nock';
 import request, { type Response } from 'supertest';
+import { MonobankRateProvider } from './rates/providers/monobank/monobank-rate.provider';
+import { RATE_PROVIDER, RATES_REPOSITORY } from './rates/rates.tokens';
+import { RedisRatesRepository } from './rates/repository/redis-rates.repository';
 import { createTestApp, type LogLine, type TestApp } from './testing/test-app';
 
 interface HealthBody {
@@ -114,6 +117,23 @@ describe('application wiring', () => {
       await booted.app.close();
 
       expect(upstream.isDone()).toBe(false);
+    });
+
+    it('sends no Redis command other than PING while the application boots', async () => {
+      const booted = await createTestApp();
+
+      await booted.app.close();
+
+      expect(booted.redis.get).not.toHaveBeenCalled();
+      expect(booted.redis.set).not.toHaveBeenCalled();
+      expect(booted.redis.del).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('dependency wiring', () => {
+    it('binds RATES_REPOSITORY to the Redis repository and RATE_PROVIDER to the Monobank provider at boot', () => {
+      expect(testApp.app.get(RATES_REPOSITORY)).toBeInstanceOf(RedisRatesRepository);
+      expect(testApp.app.get(RATE_PROVIDER)).toBeInstanceOf(MonobankRateProvider);
     });
   });
 

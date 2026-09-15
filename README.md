@@ -50,6 +50,7 @@ Application variables, read by the service at startup. An unset variable takes i
 | `REDIS_URL` | `redis://redis:6379` | URL with scheme `redis://` or `rediss://` |
 | `MONOBANK_BASE_URL` | `https://api.monobank.ua` | URL with scheme `http://` or `https://`; a trailing slash is allowed |
 | `MONOBANK_TIMEOUT_MS` | `3000` | integer ≥ 100; time allowed for a complete upstream response |
+| `RATES_CACHE_TTL_SECONDS` | `300` | integer ≥ 1; how long a fetched rate snapshot is served from the cache |
 
 Compose variables, read by Docker Compose from an optional `.env` file at the repository root:
 
