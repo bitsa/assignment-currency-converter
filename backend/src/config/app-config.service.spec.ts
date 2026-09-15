@@ -37,4 +37,14 @@ describe('AppConfigService', () => {
       'rediss://cache.example.com:6380',
     ]);
   });
+
+  it('exposes MONOBANK_BASE_URL as a string and MONOBANK_TIMEOUT_MS as a number', async () => {
+    const config = await configFor({
+      MONOBANK_BASE_URL: 'http://monobank-mock:8081',
+      MONOBANK_TIMEOUT_MS: '1500',
+    });
+
+    expect(config.monobankBaseUrl).toBe('http://monobank-mock:8081');
+    expect(config.monobankTimeoutMs).toBe(1500);
+  });
 });

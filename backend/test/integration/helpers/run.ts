@@ -25,7 +25,7 @@ export interface LongProcess {
 // npm's per-script config (for example the `-w backend` of the integration script), the
 // application's variables and the Compose variables.
 const NOT_INHERITED =
-  /^(npm_.*|INIT_CWD|PORT|NODE_ENV|LOG_LEVEL|REDIS_URL|APP_HOST_PORT|REDIS_HOST_PORT|COMPOSE_.*)$/i;
+  /^(npm_.*|INIT_CWD|PORT|NODE_ENV|LOG_LEVEL|REDIS_URL|MONOBANK_.*|APP_HOST_PORT|REDIS_HOST_PORT|COMPOSE_.*)$/i;
 
 export function childEnv(extra: Readonly<Record<string, string>> = {}): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};

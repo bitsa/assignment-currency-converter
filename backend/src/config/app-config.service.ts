@@ -21,4 +21,12 @@ export class AppConfigService {
   get redisUrl(): string {
     return this.config.get('REDIS_URL', { infer: true });
   }
+
+  get monobankBaseUrl(): string {
+    return this.config.get('MONOBANK_BASE_URL', { infer: true });
+  }
+
+  get monobankTimeoutMs(): number {
+    return this.config.get('MONOBANK_TIMEOUT_MS', { infer: true });
+  }
 }

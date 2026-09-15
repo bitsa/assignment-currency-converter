@@ -1,3 +1,4 @@
+import nock from 'nock';
 import request, { type Response } from 'supertest';
 import { createTestApp, type LogLine, type TestApp } from './testing/test-app';
 
@@ -95,6 +96,24 @@ describe('application wiring', () => {
 
       expect(response.status).toBe(503);
       expect(response.text).not.toContain('s3cret-pw');
+    });
+  });
+
+  describe('rate upstream', () => {
+    afterEach(() => {
+      nock.cleanAll();
+      nock.enableNetConnect();
+    });
+
+    it('sends no request to the rate upstream while the application boots', async () => {
+      nock.disableNetConnect();
+      nock.enableNetConnect('127.0.0.1');
+      const upstream = nock(/.*/).get(/.*/).reply(200, '[]').persist();
+      const booted = await createTestApp();
+
+      await booted.app.close();
+
+      expect(upstream.isDone()).toBe(false);
     });
   });
 
