@@ -37,7 +37,11 @@ function describe(input: unknown): string {
       try {
         return JSON.stringify(input) ?? Object.prototype.toString.call(input);
       } catch {
-        return Object.prototype.toString.call(input);
+        try {
+          return Object.prototype.toString.call(input);
+        } catch {
+          return '[unrenderable]';
+        }
       }
   }
 }

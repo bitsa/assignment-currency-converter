@@ -67,6 +67,12 @@ describe('currency domain errors', () => {
       'currency [function] is not supported',
     );
 
+    const { proxy, revoke } = Proxy.revocable({}, {});
+    revoke();
+    expect(new UnsupportedCurrencyError(proxy).message).toBe(
+      'currency [unrenderable] is not supported',
+    );
+
     const message = new UnsupportedCurrencyError('X'.repeat(10_000)).message;
     expect(message.length).toBeLessThan(64);
     expect(message).toContain('…');

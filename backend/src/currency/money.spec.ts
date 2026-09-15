@@ -62,6 +62,33 @@ describe('Money arithmetic', () => {
     expect(money('100', UAH).divideByRate('41.10', USD).currency).toBe(USD);
   });
 
+  it('multiplies a 43-digit amount by 1e-33 exactly, keeping it just above 4500000', () => {
+    const result = money('4500000000000000000000000000000000000000.01', USD).multiplyByRate(
+      '1e-33',
+      UAH,
+    );
+
+    expect(result.amount.equals('4500000.00000000000000000000000000000000001')).toBe(true);
+    expect(result.amount.gt(4500000)).toBe(true);
+  });
+
+  it('divides a 43-digit amount by 1e33 without rounding it down to 4500000', () => {
+    const result = money('4500000000000000000000000000000000000000.01', UAH).divideByRate(
+      '1e33',
+      USD,
+    );
+
+    expect(result.amount.gt(4500000)).toBe(true);
+  });
+
+  it('rejects a rate with more than 20 significant digits with InvalidRateError', () => {
+    const base = money('100', USD);
+
+    expect(() => base.multiplyByRate('1.00000000000000000001', UAH)).toThrow(InvalidRateError);
+    expect(() => base.divideByRate('1.00000000000000000001', UAH)).toThrow(InvalidRateError);
+    expect(() => base.multiplyByRate('1.0000000000000000001', UAH)).not.toThrow();
+  });
+
   it('rejects a zero, negative, NaN, infinite or non-numeric rate with InvalidRateError when multiplying or dividing', () => {
     const rates = [0, '0', -1, '-41.1', Number.NaN, Infinity, -Infinity, 'abc', ''];
     const base = money('100', USD);
