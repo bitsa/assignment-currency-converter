@@ -3,6 +3,8 @@ services:
   app:
     environment:
       MONOBANK_BASE_URL: http://monobank-mock:8081
+      # Short enough that integration tests can observe cache expiry.
+      RATES_CACHE_TTL_SECONDS: '5'
     depends_on:
       monobank-mock:
         condition: service_healthy

@@ -47,4 +47,10 @@ describe('AppConfigService', () => {
     expect(config.monobankBaseUrl).toBe('http://monobank-mock:8081');
     expect(config.monobankTimeoutMs).toBe(1500);
   });
+
+  it('exposes RATES_CACHE_TTL_SECONDS as a number', async () => {
+    const config = await configFor({ RATES_CACHE_TTL_SECONDS: '5' });
+
+    expect(config.ratesCacheTtlSeconds).toBe(5);
+  });
 });

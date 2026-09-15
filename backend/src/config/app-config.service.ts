@@ -29,4 +29,8 @@ export class AppConfigService {
   get monobankTimeoutMs(): number {
     return this.config.get('MONOBANK_TIMEOUT_MS', { infer: true });
   }
+
+  get ratesCacheTtlSeconds(): number {
+    return this.config.get('RATES_CACHE_TTL_SECONDS', { infer: true });
+  }
 }
