@@ -16,7 +16,7 @@ This section describes the components, the request flow and where each design pa
 
 ## Quick start
 
-Prerequisites: Docker with Compose v2. Node 24 is only needed to run the tests.
+Prerequisites: Docker with Compose v2. Node 24 is needed only to run the tests and `make docs-lint`.
 
 Start the stack (no `.env` file is required):
 
