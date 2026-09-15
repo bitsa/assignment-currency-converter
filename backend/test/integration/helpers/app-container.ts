@@ -13,6 +13,7 @@ const APP_VARIABLES = [
   'REDIS_URL',
   'MONOBANK_BASE_URL',
   'MONOBANK_TIMEOUT_MS',
+  'RATES_CACHE_TTL_SECONDS',
 ] as const;
 
 /** `stack`: the main stack's network (where `redis` resolves); `none-redis`: a bridge without Redis. */

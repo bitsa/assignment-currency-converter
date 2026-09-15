@@ -150,7 +150,7 @@ describe('Monobank mock in the Compose stacks', () => {
     expect(JSON.parse(served.text)).toEqual(defaultFixture);
   }, 120_000);
 
-  it('defines monobank-mock only in the test stack, which points the app at it and sets no rate TTLs', async () => {
+  it('defines monobank-mock only in the test stack, which points the app at it and sets RATES_CACHE_TTL_SECONDS as its only rate TTL', async () => {
     const base = await services(BASE_STACK_ENV);
     const test = await services(TEST_STACK_ENV);
     const baseConfig = await composeConfig(BASE_STACK_ENV);
@@ -162,7 +162,9 @@ describe('Monobank mock in the Compose stacks', () => {
       'http://monobank-mock:8081',
     );
     expect(JSON.stringify(baseConfig)).not.toMatch(/RATES_\w*TTL_SECONDS/);
-    expect(JSON.stringify(testConfig)).not.toMatch(/RATES_\w*TTL_SECONDS/);
+    expect([...new Set(JSON.stringify(testConfig).match(/RATES_\w*TTL_SECONDS/g))]).toEqual([
+      'RATES_CACHE_TTL_SECONDS',
+    ]);
   });
 
   it('documents the Monobank variables in the README and .env.example', async () => {
