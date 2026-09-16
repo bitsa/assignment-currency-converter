@@ -2,13 +2,14 @@ import { Logger, type INestApplication, type LoggerService } from '@nestjs/commo
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
-import { configureApp } from './app.setup';
+import { APP_OPTIONS, configureApp } from './app.setup';
 import { AppConfigService } from './config/app-config.service';
 
 export async function createApp(): Promise<NestExpressApplication> {
   // bufferLogs + autoFlushLogs:false keep Nest's console logger silent until pino takes over;
   // abortOnError:false turns a failed boot into a rejected promise instead of process.abort().
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    ...APP_OPTIONS,
     bufferLogs: true,
     autoFlushLogs: false,
     abortOnError: false,

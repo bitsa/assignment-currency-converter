@@ -13,8 +13,10 @@ interface HealthBody {
 
 interface NotFoundBody {
   readonly statusCode: number;
+  readonly code: string;
   readonly message: unknown;
-  readonly error: string;
+  readonly timestamp: string;
+  readonly path: string;
 }
 
 type Method = 'GET' | 'POST' | 'DELETE';
@@ -76,6 +78,13 @@ describe('application wiring', () => {
       expect(body.info.redis?.status).toBe('up');
     });
 
+    it('answers GET /health with 200 when sent with a JSON content type and an empty body', async () => {
+      await send('GET', '/health')
+        .set('content-type', 'application/json')
+        .set('content-length', '0')
+        .expect(200);
+    });
+
     it('answers GET /health with 503 while Redis PING fails', async () => {
       redisDown();
 
@@ -90,6 +99,19 @@ describe('application wiring', () => {
 
       expect(body.status).toBe('error');
       expect(body.error.redis?.status).toBe('down');
+    });
+
+    it('keeps the terminus body without a code field on /health while Redis is unreachable', async () => {
+      redisDown();
+
+      const response = await send('GET', '/health');
+      const body = response.body as HealthBody & Record<string, unknown>;
+
+      expect(response.status).toBe(503);
+      expect(body.status).toBe('error');
+      expect(body.error.redis?.status).toBe('down');
+      expect(body).not.toHaveProperty('code');
+      expect(body).not.toHaveProperty('path');
     });
 
     it('returns a /health body without the Redis password when PING fails with a URL in the error', async () => {
@@ -177,19 +199,23 @@ describe('application wiring', () => {
       expect(body.message).not.toBe('');
     });
 
-    it.each([
-      ['POST', '/health'],
-      ['DELETE', '/api/docs'],
-    ] as const)('responds 404 with the default JSON body to %s %s', async (method, path) => {
-      const response = await send(method, path);
-      const body = response.body as NotFoundBody;
+    it('responds 404 NOT_FOUND in the error envelope to POST /health and DELETE /api/docs', async () => {
+      for (const [method, path] of [
+        ['POST', '/health'],
+        ['DELETE', '/api/docs'],
+      ] as const) {
+        const response = await send(method, path);
+        const body = response.body as NotFoundBody;
 
-      expect(response.status).toBe(404);
-      expect(body).toEqual({
-        statusCode: 404,
-        error: 'Not Found',
-        message: `Cannot ${method} ${path}`,
-      });
+        expect(response.status).toBe(404);
+        expect(body).toEqual({
+          statusCode: 404,
+          code: 'NOT_FOUND',
+          message: `Cannot ${method} ${path}`,
+          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
+          path,
+        });
+      }
     });
   });
 

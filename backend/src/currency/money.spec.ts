@@ -1,7 +1,9 @@
 import { unroundedMoney } from '../testing/money';
 import { CurrencyCode } from './currency-code';
 import { CurrencyMismatchError } from './errors/currency-mismatch.error';
+import { InvalidAmountError } from './errors/invalid-amount.error';
 import { InvalidRateError } from './errors/invalid-rate.error';
+import { JsonNumber } from './json-number';
 import { Money } from './money';
 
 const USD = CurrencyCode.of('USD');
@@ -150,5 +152,23 @@ describe('Money comparison', () => {
 
   it('throws CurrencyMismatchError when comparing 100 USD with 100 EUR', () => {
     expect(() => money('100', USD).compareTo(money('100', EUR))).toThrow(CurrencyMismatchError);
+  });
+});
+
+describe('Money client amount format', () => {
+  it("checks an amount's format and sign without a currency", () => {
+    for (const input of ['1.12345', ' 100.50 ', new JsonNumber('0.100000000000000005')]) {
+      expect(() => Money.assertClientAmountFormat(input)).not.toThrow();
+    }
+    for (const input of ['abc', '1e3', '+5', true, 5, new JsonNumber('NaN')]) {
+      expect(() => Money.assertClientAmountFormat(input)).toThrow(
+        InvalidAmountError.notANumber().message,
+      );
+    }
+    for (const input of ['0.00', '-1', new JsonNumber('-0'), new JsonNumber('0')]) {
+      expect(() => Money.assertClientAmountFormat(input)).toThrow(
+        InvalidAmountError.notPositive().message,
+      );
+    }
   });
 });
