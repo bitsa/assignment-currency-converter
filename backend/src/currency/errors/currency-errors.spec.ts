@@ -3,6 +3,7 @@ import { unroundedMoney } from '../../testing/money';
 import { CurrencyCode } from '../currency-code';
 import { CurrencyMismatchError } from './currency-mismatch.error';
 import { InvalidAmountError } from './invalid-amount.error';
+import { JsonNumber } from '../json-number';
 import { InvalidRateError } from './invalid-rate.error';
 import { UnsupportedCurrencyError } from './unsupported-currency.error';
 
@@ -76,5 +77,14 @@ describe('currency domain errors', () => {
     const message = new UnsupportedCurrencyError('X'.repeat(10_000)).message;
     expect(message.length).toBeLessThan(64);
     expect(message).toContain('…');
+  });
+
+  it('renders a JSON number input as its quoted source digits in the unsupported currency message', () => {
+    expect(new UnsupportedCurrencyError(new JsonNumber('840')).message).toBe(
+      'currency "840" is not supported',
+    );
+    expect(new UnsupportedCurrencyError(new JsonNumber('1e2')).message).toBe(
+      'currency "1e2" is not supported',
+    );
   });
 });

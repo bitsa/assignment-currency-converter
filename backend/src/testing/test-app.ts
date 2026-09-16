@@ -3,7 +3,9 @@ import { Test } from '@nestjs/testing';
 import { Writable } from 'node:stream';
 import { pino } from 'pino';
 import { AppModule } from '../app.module';
-import { configureApp } from '../app.setup';
+import { APP_OPTIONS, configureApp } from '../app.setup';
+import { RATE_PROVIDER } from '../rates/rates.tokens';
+import type { RateProvider } from '../rates/providers/rate-provider.interface';
 import { buildRootLoggerOptions } from '../common/logging/logger-options';
 import { ROOT_LOGGER } from '../common/logging/logging.tokens';
 import type { LogLevel } from '../config/env.schema';
@@ -28,6 +30,8 @@ export interface FakeRedis {
 
 export interface TestAppOptions {
   readonly logLevel?: LogLevel;
+  /** Replaces the Monobank provider when given. */
+  readonly rateProvider?: RateProvider;
 }
 
 export interface TestApp {
@@ -64,14 +68,18 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<TestA
     sink,
   );
 
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+  const builder = Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(REDIS_CLIENT)
     .useValue(redis)
     .overrideProvider(ROOT_LOGGER)
-    .useValue(rootLogger)
-    .compile();
+    .useValue(rootLogger);
+  if (options.rateProvider !== undefined) {
+    builder.overrideProvider(RATE_PROVIDER).useValue(options.rateProvider);
+  }
+  const moduleRef = await builder.compile();
 
   const app = moduleRef.createNestApplication<NestExpressApplication>({
+    ...APP_OPTIONS,
     bufferLogs: true,
     autoFlushLogs: false,
   });

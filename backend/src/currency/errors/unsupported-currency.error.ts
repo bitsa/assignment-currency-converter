@@ -1,4 +1,5 @@
 import { AppError } from '../../common/errors/app-error';
+import { JsonNumber } from '../json-number';
 
 const MAX_RENDERED_LENGTH = 32;
 
@@ -35,6 +36,10 @@ function describe(input: unknown): string {
         return 'null';
       }
       try {
+        // A JSON number keeps its source digits and is quoted like any other input as sent.
+        if (input instanceof JsonNumber) {
+          return JSON.stringify(input.source);
+        }
         return JSON.stringify(input) ?? Object.prototype.toString.call(input);
       } catch {
         try {

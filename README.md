@@ -8,7 +8,7 @@ A NestJS service that converts amounts between currencies using Monobank exchang
 
 ## Overview
 
-The repository holds a TypeScript backend (NestJS 11) and its Docker Compose stack: the `app` service and a Redis instance. Today the service starts, validates its configuration, and reports its readiness on `GET /health`, including whether Redis is reachable. Every pull request is checked by lint, format, type, unit, integration and markdown gates before it can reach `main`.
+The repository holds a TypeScript backend (NestJS 11) and its Docker Compose stack: the `app` service and a Redis instance. The service converts an amount between two currencies over `POST /api/convert`, lists the currencies it can convert on `GET /api/currencies`, and reports its readiness on `GET /health`, including whether Redis is reachable. Every pull request is checked by lint, format, type, unit, integration and markdown gates before it can reach `main`.
 
 ## Architecture
 
@@ -64,7 +64,78 @@ Compose variables, read by Docker Compose from an optional `.env` file at the re
 
 ## API reference
 
-The endpoints, request and response shapes and error codes are described here, and the running service serves interactive documentation at [http://localhost:3000/api/docs](http://localhost:3000/api/docs).
+The running service serves interactive documentation at [http://localhost:3000/api/docs](http://localhost:3000/api/docs) and the raw OpenAPI document at `/api/docs-json`. The example responses below use the rates served by the test stack's Monobank mock.
+
+### `POST /api/convert`
+
+Converts an amount from one currency to another. The body must be a JSON object sent with `content-type: application/json`.
+
+```bash
+curl -X POST http://localhost:3000/api/convert \
+  -H 'content-type: application/json' \
+  -d '{"from":"EUR","to":"GBP","amount":100}'
+```
+
+```json
+{
+  "from": "EUR",
+  "to": "GBP",
+  "amount": 100,
+  "convertedAmount": 86.46,
+  "rate": 0.864621,
+  "path": ["EUR", "UAH", "GBP"],
+  "rateDate": "2026-09-11T05:00:00.000Z",
+  "source": "live"
+}
+```
+
+- `from`, `to`: ISO 4217 codes, case-insensitive; the response returns them upper-case.
+- `amount`: a positive JSON number or a plain decimal string (`"100.50"`), with no more decimals than the source currency allows. One conversion may move at most `4500000.00 UAH` worth of money.
+- `convertedAmount` is rounded half-even to the target currency's minor units. `rate` is the effective rate before that rounding, to 6 decimals.
+- `path` lists the currencies the conversion went through: a directly quoted pair or its inverse is used when Monobank publishes one, otherwise the conversion goes through UAH.
+- `rateDate` is the time of the oldest quote used. `source` says whether the rates came from the cache (`cache`) or a fresh upstream call (`live`).
+
+| Status | `code` | When |
+|---|---|---|
+| `400` | `VALIDATION_ERROR` | the body is not a JSON object, a field is missing, unknown or invalid, or the amount is above the conversion limit |
+| `415` | `UNSUPPORTED_MEDIA_TYPE` | the request is not `application/json` |
+| `422` | `CONVERSION_ERROR` | both currencies are valid, but the current rates cannot convert between them |
+| `503` | `UPSTREAM_UNAVAILABLE` | exchange rates cannot be fetched right now |
+
+### `GET /api/currencies`
+
+Lists the currencies the service can convert between with the current rates: UAH and every currency Monobank quotes against it.
+
+```bash
+curl http://localhost:3000/api/currencies
+```
+
+```json
+{
+  "currencies": ["CHF", "CZK", "EUR", "GBP", "JPY", "PLN", "UAH", "USD"],
+  "rateDate": "2026-09-11T05:00:00.000Z",
+  "source": "cache"
+}
+```
+
+With live Monobank rates the list is longer. Errors: `503 UPSTREAM_UNAVAILABLE` when exchange rates cannot be fetched.
+
+### Errors
+
+Every error response except `GET /health` has the same shape:
+
+```json
+{
+  "statusCode": 400,
+  "code": "VALIDATION_ERROR",
+  "message": "amount must be a positive number",
+  "details": [{ "field": "amount", "message": "amount must be a positive number" }],
+  "timestamp": "2026-09-11T08:00:00.000Z",
+  "path": "/api/convert"
+}
+```
+
+`details` appears only on `400` responses and lists every invalid field. An unknown route answers `404 NOT_FOUND`, and an unexpected failure answers `500 INTERNAL_ERROR` without internal details.
 
 ## Rate semantics
 

@@ -28,12 +28,14 @@ export class Money {
     Object.freeze(this);
   }
 
+  /** Number-format and sign rules only, for when the currency is not known. */
+  static assertClientAmountFormat(input: unknown): void {
+    Money.readPositiveClientDecimal(input);
+  }
+
   /** Strict edge check for a client-supplied amount; the first broken rule wins. */
   static parseClientAmount(input: unknown, currency: CurrencyCode): Money {
-    const decimal = Money.readClientDecimal(input);
-    if (decimal.isNeg() || decimal.isZero()) {
-      throw InvalidAmountError.notPositive();
-    }
+    const decimal = Money.readPositiveClientDecimal(input);
     if (decimal.decimalPlaces() > currency.minorUnits) {
       throw InvalidAmountError.tooManyDecimals(currency);
     }
@@ -68,6 +70,14 @@ export class Money {
   /** Rounded half-even and rendered in fixed notation with exactly the minor units. */
   toFixed(): string {
     return this.amount.toFixed(this.currency.minorUnits, Decimal.ROUND_HALF_EVEN);
+  }
+
+  private static readPositiveClientDecimal(input: unknown): Decimal {
+    const decimal = Money.readClientDecimal(input);
+    if (decimal.isNeg() || decimal.isZero()) {
+      throw InvalidAmountError.notPositive();
+    }
+    return decimal;
   }
 
   /**
