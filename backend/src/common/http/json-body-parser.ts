@@ -1,7 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { JsonNumber } from '../../currency/json-number';
 import { RequestValidationError } from '../errors/request-validation.error';
-import { EmptyJsonBodyError } from './empty-json-body.error';
 import { isJsonMediaType } from './json-media-type';
 
 export const JSON_BODY_LIMIT_BYTES = 16 * 1024;
@@ -14,6 +13,14 @@ export interface JsonBodyParserOptions {
   readonly verify: (req: IncomingMessage, res: ServerResponse, buf: Buffer) => void;
 }
 
+/** Requests whose JSON body was read and had zero bytes; body-parser turns those into `{}`. */
+const emptyBodies = new WeakSet<object>();
+
+/** True when the parser read this request's body and it was empty. */
+export function hadEmptyJsonBody(req: object): boolean {
+  return emptyBodies.has(req);
+}
+
 /**
  * Non-strict, so a body such as `"EUR"` or `42` parses and is then refused as "not an object"
  * rather than as "not JSON". Numbers keep their source text (`JsonNumber`).
@@ -24,9 +31,11 @@ export function jsonBodyParserOptions(): JsonBodyParserOptions {
     strict: false,
     reviver: JsonNumber.reviver,
     type: (req) => isJsonMediaType(req.headers['content-type']),
-    verify: (_req, _res, buf) => {
+    // Only recorded here: the parser runs on every route, and an empty body is an error only
+    // where a body is required (see JsonObjectBodyGuard).
+    verify: (req, _res, buf) => {
       if (buf.length === 0) {
-        throw new EmptyJsonBodyError();
+        emptyBodies.add(req);
       }
     },
   };
@@ -35,7 +44,6 @@ export function jsonBodyParserOptions(): JsonBodyParserOptions {
 /** body-parser error types that mean the body could not be read as JSON. */
 const NOT_JSON_TYPES: ReadonlySet<string> = new Set([
   'entity.parse.failed',
-  'entity.empty',
   'charset.unsupported',
   'encoding.unsupported',
 ]);

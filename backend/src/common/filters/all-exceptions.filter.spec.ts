@@ -1,4 +1,9 @@
-import { ServiceUnavailableException, type ArgumentsHost } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  ServiceUnavailableException,
+  type ArgumentsHost,
+} from '@nestjs/common';
 import type { HttpAdapterHost } from '@nestjs/core';
 import { UpstreamTimeoutError } from '../../rates/providers/errors/upstream-timeout.error';
 import { RequestValidationError } from '../errors/request-validation.error';
@@ -86,6 +91,24 @@ describe('AllExceptionsFilter', () => {
 
     expect(reply).toHaveBeenCalledWith(RESPONSE, healthBody, 503);
     expect(error).not.toHaveBeenCalled();
+  });
+
+  it('answers a non-503 HTTP error on GET /health with the envelope, not the raw body', () => {
+    const { filter, reply } = setup();
+    const rawBody = { raw: 'too many requests' };
+
+    filter.catch(
+      new HttpException(rawBody, HttpStatus.TOO_MANY_REQUESTS),
+      hostFor('GET', '/health'),
+    );
+
+    expect(reply).toHaveBeenCalledTimes(1);
+    expect(reply).not.toHaveBeenCalledWith(RESPONSE, rawBody, expect.anything());
+    expect(reply).toHaveBeenCalledWith(
+      RESPONSE,
+      expect.objectContaining({ path: '/health' }),
+      expect.any(Number),
+    );
   });
 
   it('answers an unexpected error on GET /health with the 500 envelope', () => {

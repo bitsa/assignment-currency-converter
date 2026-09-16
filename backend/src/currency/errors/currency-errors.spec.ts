@@ -79,6 +79,18 @@ describe('currency domain errors', () => {
     expect(message).toContain('…');
   });
 
+  it('renders JSON numbers nested in a rejected currency input as their source digits', () => {
+    expect(new UnsupportedCurrencyError({ a: new JsonNumber('1') }).message).toBe(
+      'currency {"a":1} is not supported',
+    );
+    expect(new UnsupportedCurrencyError([new JsonNumber('5'), new JsonNumber('1e2')]).message).toBe(
+      'currency [5,1e2] is not supported',
+    );
+    expect(new UnsupportedCurrencyError([new JsonNumber('NaN')]).message).toBe(
+      'currency ["NaN"] is not supported',
+    );
+  });
+
   it('renders a JSON number input as its quoted source digits in the unsupported currency message', () => {
     expect(new UnsupportedCurrencyError(new JsonNumber('840')).message).toBe(
       'currency "840" is not supported',

@@ -61,6 +61,6 @@ function isHealthCheckFailure(
     method === 'GET' &&
     url.split('?', 1)[0] === HEALTH_PATH &&
     exception instanceof HttpException &&
-    exception.getStatus() !== 404
+    exception.getStatus() === 503
   );
 }

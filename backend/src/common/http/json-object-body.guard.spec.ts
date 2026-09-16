@@ -3,6 +3,7 @@ import { JsonNumber } from '../../currency/json-number';
 import { thrownBy } from '../../testing/thrown-by';
 import { RequestValidationError } from '../errors/request-validation.error';
 import { UnsupportedMediaTypeError } from '../errors/unsupported-media-type.error';
+import { jsonBodyParserOptions } from './json-body-parser';
 import { JsonObjectBodyGuard } from './json-object-body.guard';
 
 /** `parsed` holds the body when the parser read one; omit it for a body never read. */
@@ -42,6 +43,18 @@ describe('JsonObjectBodyGuard', () => {
 
   it('reports a body that was never read as not valid JSON', () => {
     expect(bodyMessage(check('application/json'))).toBe('request body is not valid JSON');
+  });
+
+  it('reports a body that was read but empty as not valid JSON', () => {
+    const request = { headers: { 'content-type': 'application/json' }, body: {} };
+    jsonBodyParserOptions().verify(request as never, {} as never, Buffer.alloc(0));
+    const context = {
+      switchToHttp: () => ({ getRequest: () => request }),
+    } as unknown as ExecutionContext; // only switchToHttp().getRequest() is used by the guard
+
+    const error = thrownBy(() => new JsonObjectBodyGuard().canActivate(context));
+
+    expect(bodyMessage(error)).toBe('request body is not valid JSON');
   });
 
   it('rejects an array, a string, null and a bare number as not a JSON object', () => {

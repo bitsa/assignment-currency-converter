@@ -21,6 +21,17 @@ describe('OWN_KEYS_TRANSFORMER', () => {
     expect(OWN_KEYS_TRANSFORMER.classToPlain(instance)).toBe(instance);
   });
 
+  it('never copies __proto__, constructor or prototype keys, whatever their value', () => {
+    const plain = JSON.parse(
+      '{"__proto__":1,"constructor":null,"prototype":false,"amount":"1"}',
+    ) as Record<string, unknown>;
+
+    const instance = OWN_KEYS_TRANSFORMER.plainToInstance(SampleDto, plain);
+
+    expect(Object.keys(instance)).toEqual(['amount']);
+    expect(instance.constructor).toBe(SampleDto);
+  });
+
   it('builds an empty DTO instance from a value that is not an object', () => {
     const instance = OWN_KEYS_TRANSFORMER.plainToInstance(SampleDto, 'EUR');
 

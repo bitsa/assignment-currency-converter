@@ -280,6 +280,25 @@ describe('ConvertController over HTTP', () => {
       expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
     });
 
+    it('answers an unknown field named hasOwnProperty with 400 "field \\"hasOwnProperty\\" is not allowed"', async () => {
+      const response = await post('{"from":"EUR","to":"GBP","amount":100,"hasOwnProperty":1}');
+
+      expectValidationError(response, 'field "hasOwnProperty" is not allowed');
+      expect(provider.getRates).not.toHaveBeenCalled();
+    });
+
+    it('ignores constructor and prototype keys whatever their value', async () => {
+      for (const value of ['1', 'null', 'false', '""', '0', '{}']) {
+        for (const key of ['constructor', 'prototype', '__proto__']) {
+          const response = await post(
+            `{"from":"EUR","to":"GBP","amount":100,${JSON.stringify(key)}:${value}}`,
+          );
+
+          expect([key, value, response.status]).toEqual([key, value, 200]);
+        }
+      }
+    });
+
     it('does not echo the value of an unknown field in the error body', async () => {
       const secret = 'S'.repeat(1024);
 
@@ -393,6 +412,16 @@ describe('ConvertController over HTTP', () => {
   });
 
   describe('GET /api/currencies', () => {
+    it('answers a GET with a JSON content type and an empty body like any other GET', async () => {
+      const response = await agent()
+        .get('/api/currencies')
+        .set('content-type', JSON_TYPE)
+        .set('content-length', '0');
+
+      expect(response.status).toBe(200);
+      expect((response.body as CurrenciesBody).currencies).toContain('UAH');
+    });
+
     it('answers GET /api/currencies with the eight default-fixture codes', async () => {
       const response = await currencies();
 

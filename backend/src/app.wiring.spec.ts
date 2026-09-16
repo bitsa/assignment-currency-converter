@@ -78,6 +78,13 @@ describe('application wiring', () => {
       expect(body.info.redis?.status).toBe('up');
     });
 
+    it('answers GET /health with 200 when sent with a JSON content type and an empty body', async () => {
+      await send('GET', '/health')
+        .set('content-type', 'application/json')
+        .set('content-length', '0')
+        .expect(200);
+    });
+
     it('answers GET /health with 503 while Redis PING fails', async () => {
       redisDown();
 

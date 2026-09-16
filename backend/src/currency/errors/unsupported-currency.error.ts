@@ -40,7 +40,7 @@ function describe(input: unknown): string {
         if (input instanceof JsonNumber) {
           return JSON.stringify(input.source);
         }
-        return JSON.stringify(input) ?? Object.prototype.toString.call(input);
+        return JSON.stringify(input, sourceDigits) ?? Object.prototype.toString.call(input);
       } catch {
         try {
           return Object.prototype.toString.call(input);
@@ -48,5 +48,20 @@ function describe(input: unknown): string {
           return '[unrenderable]';
         }
       }
+  }
+}
+
+/** `JSON.rawJSON` (Node 21+) is not in the TypeScript lib yet. */
+const JSON_WITH_RAW = JSON as unknown as { rawJSON(text: string): unknown }; // runtime-only API
+
+/** Stringify replacer: a nested `JsonNumber` is written as its source digits, as sent. */
+function sourceDigits(_key: string, value: unknown): unknown {
+  if (!(value instanceof JsonNumber)) {
+    return value;
+  }
+  try {
+    return JSON_WITH_RAW.rawJSON(value.source);
+  } catch {
+    return value.source;
   }
 }

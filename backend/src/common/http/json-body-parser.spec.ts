@@ -3,6 +3,7 @@ import { JsonNumber } from '../../currency/json-number';
 import { RequestValidationError } from '../errors/request-validation.error';
 import {
   JSON_BODY_LIMIT_BYTES,
+  hadEmptyJsonBody,
   jsonBodyParserOptions,
   translateBodyParserError,
 } from './json-body-parser';
@@ -73,18 +74,16 @@ describe('JSON body parser', () => {
 
   it('rejects a zero-length body in verify so it is reported as not valid JSON', () => {
     const { verify } = jsonBodyParserOptions();
-    let thrown: unknown;
-    try {
-      verify(REQ, RES, Buffer.alloc(0));
-    } catch (error) {
-      thrown = error;
-    }
+    const empty = {} as IncomingMessage;
+    const filled = {} as IncomingMessage;
 
-    expect(() => verify(REQ, RES, Buffer.from('{}'))).not.toThrow();
-    expect(thrown).toEqual(expect.objectContaining({ type: 'entity.empty' }));
-    // body-parser rethrows a verify error as a 403 keeping its `type`.
-    Object.assign(thrown as object, { status: 403 });
-    expect(bodyMessage(translated(thrown))).toBe('request body is not valid JSON');
+    // verify only records the empty body; JsonObjectBodyGuard answers "not valid JSON" for it.
+    expect(() => verify(empty, RES, Buffer.alloc(0))).not.toThrow();
+    verify(filled, RES, Buffer.from('{}'));
+
+    expect(hadEmptyJsonBody(empty)).toBe(true);
+    expect(hadEmptyJsonBody(filled)).toBe(false);
+    expect(hadEmptyJsonBody(REQ)).toBe(false);
   });
 
   it('passes errors that did not come from the body parser on unchanged', () => {

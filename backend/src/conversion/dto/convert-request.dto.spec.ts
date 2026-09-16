@@ -140,6 +140,17 @@ describe('ConvertRequestDto validation', () => {
     ]);
   });
 
+  it('rejects unknown fields named like built-in object methods, such as hasOwnProperty and toString', async () => {
+    await expect(
+      detailsFor(body({ hasOwnProperty: 1, foo: 2, toString: 'x', valueOf: null })),
+    ).resolves.toEqual([
+      { field: 'hasOwnProperty', message: 'field "hasOwnProperty" is not allowed' },
+      { field: 'foo', message: 'field "foo" is not allowed' },
+      { field: 'toString', message: 'field "toString" is not allowed' },
+      { field: 'valueOf', message: 'field "valueOf" is not allowed' },
+    ]);
+  });
+
   it('lists one detail per invalid field when several fields are invalid', async () => {
     await expect(
       detailsFor({ foo: 'x', amount: '-5', to: 'XAU', bar: null, from: 'usd' }),

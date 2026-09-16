@@ -2,6 +2,7 @@ import { Injectable, type CanActivate, type ExecutionContext } from '@nestjs/com
 import type { IncomingMessage } from 'node:http';
 import { RequestValidationError } from '../errors/request-validation.error';
 import { UnsupportedMediaTypeError } from '../errors/unsupported-media-type.error';
+import { hadEmptyJsonBody } from './json-body-parser';
 import { isJsonMediaType } from './json-media-type';
 
 type ParsedRequest = IncomingMessage & { readonly body?: unknown };
@@ -17,8 +18,9 @@ export class JsonObjectBodyGuard implements CanActivate {
     if (!isJsonMediaType(request.headers['content-type'])) {
       throw new UnsupportedMediaTypeError();
     }
-    // A request with neither content-length nor transfer-encoding is never read.
-    if (request.body === undefined) {
+    // A request with neither content-length nor transfer-encoding is never read; an empty one is
+    // read but parsed as `{}`.
+    if (request.body === undefined || hadEmptyJsonBody(request)) {
       throw RequestValidationError.bodyNotJson();
     }
     if (!isPlainObject(request.body)) {
